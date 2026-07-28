@@ -19,7 +19,10 @@ Live text → templated hand-drawn diagram, optimized for phones.
 ## Non-goals (v1)
 - Full freehand drawing editor (use Excalidraw for that)
 - Multiplayer whiteboard (phase 2 via excalidraw-room)
-- Auto-post to social networks
+- Auto-post to social networks (Telegram approve / WA Web / LI paste stay in automation)
+
+## Internal dual-use
+The same `/v1/package` renderer powers **Pager Notes** LinkedIn cards, WhatsApp tips, and portfolio pathway slides — so product craft and channel craft do not fork.
 
 ## Brand
 - Name: **InkType**

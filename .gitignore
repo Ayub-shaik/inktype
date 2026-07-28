@@ -8,3 +8,6 @@ dist/
 .DS_Store
 coverage/
 *.tsbuildinfo
+apps/api/tmp/
+*.jpg
+!docs/**/*.jpg

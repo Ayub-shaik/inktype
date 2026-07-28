@@ -10,19 +10,24 @@
 
 ```
 ┌──────── browser (apps/web) ────────┐
-│  PreviewCanvas  ← TemplateEngine   │
+│  PreviewCanvas  ← @inktype/core    │
 │  EditorPane (textarea + uploads)   │
-│  TemplatePicker                    │
+│  Export → POST /v1/render          │
 └─────────────┬──────────────────────┘
-              │ uploads / AI structure / export
+              │
 ┌─────────────▼──────────────────────┐
-│  API (later: services/api)         │
-│  - PDF extract                     │
-│  - OCR                             │
-│  - optional LLM structure          │
-│  - Pro export / billing            │
-└────────────────────────────────────┘
+│  apps/api (:3041)                  │
+│  GET  /v1/templates /themes        │
+│  POST /v1/preview /render /package │
+│  @inktype/render (Virgil+Rough→JPG)│
+└───────┬─────────────┬──────────────┘
+        │             │
+   public Pro     internal channel
+   watermarked    insights-ops / content-ops
+                  (LI · WA · portfolio)
 ```
+
+See `docs/CHANNEL_INTEGRATION.md`. Live keystrokes stay in `@inktype/core`; screenshots are API-only.
 
 ## Template model (`packages/core`)
 

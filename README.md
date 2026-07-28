@@ -39,9 +39,11 @@ Not “another AI chat that draws once.” The wedge is **live typing into a des
 
 ```
 inktype/
-  apps/web/           # Next.js browser app (MVP)
-  packages/core/      # templates + live slot/reflow engine
-  docs/               # product, architecture, monetization
+  apps/web/           # Next.js browser app (:3040)
+  apps/api/           # Render API (:3041) — product + channel
+  packages/core/      # live slot / reflow engine
+  packages/render/    # Virgil + Rough.js → Playwright JPEG
+  docs/               # product, architecture, channel integration
 ```
 
 ## Backend / tool stack (chosen)
@@ -64,22 +66,23 @@ Live keystrokes must stay **client-side**. Round-tripping an LLM on every word i
 
 **Explicitly not the core path:** Obsidian as end-user runtime, AFFiNE as host app, or `excalidraw-room` for v1 (collab is a Pro phase-2 feature).
 
-## Quick start (web)
+## Quick start
 
 ```bash
-cd apps/web
 npm install
-npm run dev
-# → http://localhost:3040
+npm run start:api    # :3041 — JPEG render + /v1/package for LI/WA/portfolio
+npm run dev          # :3040 — browser app (Export calls API)
 ```
+
+Channel wiring: [`docs/CHANNEL_INTEGRATION.md`](docs/CHANNEL_INTEGRATION.md)
 
 ## Roadmap
 
-1. **MVP (now)** — split UI, 3 templates, live text fill, template switch reflow, PNG export
-2. **Uploads** — `.txt` / `.md` / PDF text extract / image OCR
+1. **MVP (now)** — split UI, live fill, API JPEG export, channel `/v1/package`
+2. **Uploads** — PDF (`pdf.js`) / image OCR (`tesseract.js`)
 3. **Pro** — accounts, saved boards, watermark removal, more templates
 4. **Excalidraw export** — real `.excalidraw` scenes
-5. **Android** — TWA or React Native shell over the same web core
+5. **Android** — TWA over the same web core
 6. **Collab rooms** — optional self-hosted room server
 
 ## License

@@ -6,7 +6,12 @@ import {
   aspectPadding,
   liveFill,
   getTemplate,
+  parseContent,
 } from "@inktype/core";
+
+const API =
+  process.env.NEXT_PUBLIC_INKTYPE_API_URL?.replace(/\/$/, "") ||
+  "http://127.0.0.1:3041";
 
 const SAMPLE = `Kubernetes rollouts without drama
 Keep users online while shipping
@@ -20,6 +25,7 @@ export default function HomePage() {
   const [templateId, setTemplateId] = useState("notebook");
   const [text, setText] = useState(SAMPLE);
   const [status, setStatus] = useState("Type below — preview updates live.");
+  const [exporting, setExporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { template, filled } = useMemo(
@@ -53,10 +59,45 @@ export default function HomePage() {
   }
 
   async function exportPng() {
-    const node = document.getElementById("ink-canvas");
-    if (!node) return;
-    // Lightweight MVP: open print-friendly new tab instructions
-    setStatus("Pro export (clean PNG/SVG) coming next — screenshot the preview for now.");
+    setExporting(true);
+    setStatus("Rendering via InkType API…");
+    try {
+      const doc = parseContent(text);
+      const res = await fetch(`${API}/v1/render?encoding=base64`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: templateId,
+          content: {
+            brand: "InkType",
+            title: doc.title,
+            subtitle: doc.subtitle,
+            bullets: doc.bullets,
+            nodes: doc.nodes,
+            diagram: { heading: "flow", nodes: doc.nodes },
+            simpleWords: doc.subtitle || "Typed live in InkType",
+            progress: "01 · 01",
+          },
+          aspect: template.aspect,
+          format: "jpeg",
+          watermark: true,
+          encoding: "base64",
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const a = document.createElement("a");
+      a.href = `data:${data.mime};base64,${data.imageBase64}`;
+      a.download = `inktype-${templateId}.jpg`;
+      a.click();
+      setStatus(`Exported ${data.width}×${data.height} JPEG (watermarked).`);
+    } catch (err) {
+      setStatus(
+        `Export failed — is the API on :3041? (${String((err as Error).message || err).slice(0, 80)})`,
+      );
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -72,7 +113,9 @@ export default function HomePage() {
             value={templateId}
             onChange={(e) => {
               setTemplateId(e.target.value);
-              setStatus(`Switched to ${getTemplate(e.target.value).name} — content remapped.`);
+              setStatus(
+                `Switched to ${getTemplate(e.target.value).name} — content remapped.`,
+              );
             }}
           >
             {TEMPLATES.map((t) => (
@@ -81,8 +124,13 @@ export default function HomePage() {
               </option>
             ))}
           </select>
-          <button type="button" className="btn primary" onClick={exportPng}>
-            Export
+          <button
+            type="button"
+            className="btn primary"
+            onClick={exportPng}
+            disabled={exporting}
+          >
+            {exporting ? "…" : "Export"}
           </button>
         </div>
       </header>
