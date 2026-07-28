@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   TEMPLATES,
   aspectPadding,
@@ -32,14 +32,44 @@ CDN to data
 - Services | Workers
 - Postgres | Redis`;
 
+function guestKey() {
+  if (typeof window === "undefined") return "ssr";
+  const k = "inktype_guest_key";
+  let v = localStorage.getItem(k);
+  if (!v) {
+    v = `g_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    localStorage.setItem(k, v);
+  }
+  return v;
+}
+
+type Role = "guest" | "free" | "pro" | "admin";
+
+function authHeaders(role: Role, gKey: string): Record<string, string> {
+  if (role === "guest") {
+    return {
+      Authorization: "Bearer guest",
+      "X-InkType-Guest-Key": gKey,
+    };
+  }
+  if (role === "admin") return { Authorization: "Bearer admin" };
+  if (role === "pro") return { Authorization: "Bearer pro:demo" };
+  return { Authorization: "Bearer free:demo" };
+}
+
 export default function HomePage() {
   const [templateId, setTemplateId] = useState("notebook");
   const [text, setText] = useState(SAMPLE);
+  const [role, setRole] = useState<Role>("guest");
+  const [ent, setEnt] = useState<Record<string, unknown> | null>(null);
+  const [pricing, setPricing] = useState<Record<string, unknown> | null>(null);
   const [status, setStatus] = useState(
-    "Local stack: type → slots/diagram. OpenClaw off unless you enable it.",
+    "Guest: 1 protected preview + 1 export. Live canvas is low-fi; JPEG preview is gated.",
   );
-  const [exporting, setExporting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const gKey = useMemo(() => guestKey(), []);
 
   const isDiagram = DIAGRAM_IDS.has(templateId);
 
@@ -66,6 +96,27 @@ export default function HomePage() {
     return { template: live.template, filled: live.filled, scene: null };
   }, [templateId, text]);
 
+  async function refreshEntitlements(nextRole = role) {
+    try {
+      const res = await fetch(`${API}/v1/entitlements`, {
+        headers: authHeaders(nextRole, gKey),
+      });
+      const data = await res.json();
+      setEnt(data);
+    } catch {
+      setEnt(null);
+    }
+  }
+
+  useEffect(() => {
+    refreshEntitlements();
+    fetch(`${API}/v1/pricing`)
+      .then((r) => r.json())
+      .then(setPricing)
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
+
   function onUpload(file: File | null) {
     if (!file) return;
     const lower = file.name.toLowerCase();
@@ -76,62 +127,92 @@ export default function HomePage() {
     ) {
       file.text().then((t) => {
         setText(t);
-        setStatus(`Loaded ${file.name} (local parse)`);
+        setStatus(`Loaded ${file.name}`);
       });
       return;
     }
-    if (lower.endsWith(".pdf") || file.type === "application/pdf") {
-      setStatus("PDF plugin stub — paste text for now (no OpenClaw).");
-      return;
-    }
-    if (file.type.startsWith("image/")) {
-      setStatus("OCR plugin stub — paste text for now (no OpenClaw).");
-      return;
-    }
-    setStatus("Unsupported file type for MVP.");
+    setStatus("PDF/OCR plugins stub — paste text for now.");
   }
 
-  async function exportPng() {
-    setExporting(true);
-    setStatus("Rendering via local API (Virgil/Rough)…");
+  async function runPreview() {
+    setBusy(true);
+    setStatus("Requesting protected JPEG preview…");
     try {
-      const doc = parseContent(text);
-      const res = await fetch(`${API}/v1/render?encoding=base64`, {
+      const res = await fetch(`${API}/v1/preview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(role, gKey),
+        },
         body: JSON.stringify({
           template: templateId,
-          content: {
-            brand: "InkType",
-            title: doc.title,
-            subtitle: doc.subtitle,
-            bullets: doc.bullets,
-            nodes: doc.nodes,
-            diagram: { heading: "flow", nodes: doc.nodes },
-            simpleWords: doc.subtitle || "Typed live in InkType",
-            progress: "01 · 01",
-          },
-          aspect: template.aspect,
-          format: "jpeg",
-          watermark: true,
+          text,
+          brand: "InkType",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(data.message || data.error || `Preview blocked (${res.status})`);
+        setEnt(data.entitlements || ent);
+        return;
+      }
+      setPreviewUrl(`data:${data.mime};base64,${data.imageBase64}`);
+      setEnt(data.entitlements);
+      setStatus(
+        data.replay
+          ? "Replayed same draft preview (no extra quota)."
+          : `Protected preview OK · blur=${data.protection?.blurBottom} · watermark on`,
+      );
+    } catch (err) {
+      setStatus(`Preview failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runExport() {
+    setBusy(true);
+    setStatus("Exporting (consumes 1 image credit)…");
+    try {
+      const res = await fetch(`${API}/v1/render?encoding=base64`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(role, gKey),
+        },
+        body: JSON.stringify({
+          template: templateId,
+          text,
+          brand: "InkType",
           encoding: "base64",
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+      if (!res.ok) {
+        setStatus(data.message || data.error || `Export blocked (${res.status})`);
+        setEnt(data.entitlements || ent);
+        return;
+      }
       const a = document.createElement("a");
       a.href = `data:${data.mime};base64,${data.imageBase64}`;
       a.download = `inktype-${templateId}.jpg`;
       a.click();
-      setStatus(`Exported ${data.width}×${data.height} JPEG (local render).`);
-    } catch (err) {
+      setEnt(data.entitlements);
       setStatus(
-        `Export failed — is the API on :3041? (${String((err as Error).message || err).slice(0, 80)})`,
+        `Exported · remaining ${data.entitlements?.exportsRemaining ?? "∞"}`,
       );
+    } catch (err) {
+      setStatus(`Export failed: ${(err as Error).message}`);
     } finally {
-      setExporting(false);
+      setBusy(false);
     }
   }
+
+  const proPrice = (pricing?.pro || {}) as {
+    listPriceInr?: number;
+    payPriceInr?: number;
+    display?: string;
+  };
 
   return (
     <div className="app">
@@ -142,6 +223,17 @@ export default function HomePage() {
         <div className="top-actions">
           <select
             className="chip"
+            aria-label="Account"
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+          >
+            <option value="guest">Guest</option>
+            <option value="free">Signed in (free)</option>
+            <option value="pro">Pro</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select
+            className="chip"
             aria-label="Template"
             value={templateId}
             onChange={(e) => {
@@ -149,9 +241,6 @@ export default function HomePage() {
               setTemplateId(id);
               if (id === "arch" && text === SAMPLE) setText(SAMPLE_ARCH);
               if (id === "notebook" && text === SAMPLE_ARCH) setText(SAMPLE);
-              setStatus(
-                `Switched to ${getTemplate(id).name} — ${DIAGRAM_IDS.has(id) ? "local diagram engine" : "slot reflow"}.`,
-              );
             }}
           >
             {TEMPLATES.map((t) => (
@@ -160,20 +249,26 @@ export default function HomePage() {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            className="btn primary"
-            onClick={exportPng}
-            disabled={exporting}
-          >
-            {exporting ? "…" : "Export"}
-          </button>
         </div>
       </header>
 
+      <div className="quota-bar" aria-live="polite">
+        <span>
+          {ent
+            ? ent.unlimited
+              ? "Admin · unlimited"
+              : `${String(ent.plan)} · exports ${String(ent.exportsUsed)}/${String(ent.exportsLimit)} · previews ${String(ent.previewsUsed)}/${String(ent.previewsLimit)}`
+            : "Connecting…"}
+        </span>
+        <span className="quota-price">
+          Pro {proPrice.listPriceInr ?? 300}/- →{" "}
+          <strong>{proPrice.payPriceInr ?? 260}/-</strong> (20% off) · 300 credits
+        </span>
+      </div>
+
       <section className="preview-wrap" aria-label="Live preview">
         <div className="preview-meta">
-          <span>{template.name}</span>
+          <span>{template.name} · live (local)</span>
           <span>{template.blurb}</span>
         </div>
         <div className="stage">
@@ -253,44 +348,60 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        {previewUrl ? (
+          <div className="server-preview">
+            <div className="preview-meta">
+              <span>Server JPEG preview</span>
+              <span>watermark + bottom blur (non-Pro)</span>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="Protected InkType preview" />
+          </div>
+        ) : null}
       </section>
 
       <section className="editor-wrap" aria-label="Editor">
         <div className="editor-label">
-          Type · local fill {isDiagram ? "· diagram engine" : "· slots"}
+          Type · local fill · JPEG preview/export gated by plan
         </div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={
-            isDiagram
-              ? "Title\nSubtitle\n- step or tier\n- use A -> B -> C for flow\n- use A | B for arch siblings"
-              : "Title on first line\nOptional subtitle\n- bullet\n- bullet"
-          }
+          placeholder="Title… bullets… A -> B for flow · A | B for arch"
           spellCheck
         />
         <div className="editor-tools">
+          <button
+            type="button"
+            className="chip"
+            disabled={busy}
+            onClick={runPreview}
+          >
+            Preview JPEG
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={busy}
+            onClick={runExport}
+          >
+            Export
+          </button>
           <label className="chip file-btn">
             Upload
             <input
               ref={fileRef}
               type="file"
-              accept=".txt,.md,text/plain,text/markdown,application/pdf,image/*"
+              accept=".txt,.md,text/plain,text/markdown"
               onChange={(e) => onUpload(e.target.files?.[0] || null)}
             />
           </label>
-          <button type="button" className="chip" onClick={() => setText("")}>
-            Clear
-          </button>
-          <button
-            type="button"
-            className="chip"
-            onClick={() => setText(isDiagram && templateId === "arch" ? SAMPLE_ARCH : SAMPLE)}
-          >
-            Sample
-          </button>
         </div>
         <p className="hint">{status}</p>
+        <p className="hint muted">
+          Guests: 1 preview (anti half-content misuse) + 1 image. Free: 10/mo.
+          Pro: 300 credits at ₹260 (20% off ₹300). Admin: unrestricted.
+        </p>
       </section>
     </div>
   );

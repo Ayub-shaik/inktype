@@ -9,6 +9,7 @@
     "smoke": "node src/smoke.js"
   },
   "dependencies": {
+    "@inktype/billing": "*",
     "@inktype/core": "*",
     "@inktype/diagram": "*",
     "@inktype/plugins": "*",

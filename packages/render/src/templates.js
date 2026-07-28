@@ -26,6 +26,8 @@ function wrap(opts, bodyInner) {
   return shell(bodyInner, {
     aspect: opts.aspect || "story",
     watermark: Boolean(opts.watermark),
+    heavyWatermark: Boolean(opts.heavyWatermark),
+    blurBottom: Boolean(opts.blurBottom),
   });
 }
 
@@ -287,6 +289,8 @@ export function buildHtml(template, opts = {}) {
     return shell(body, {
       aspect: opts.aspect || (layout === "flow" ? "wide" : "story"),
       watermark: Boolean(opts.watermark),
+      heavyWatermark: Boolean(opts.heavyWatermark),
+      blurBottom: Boolean(opts.blurBottom),
     });
   }
 

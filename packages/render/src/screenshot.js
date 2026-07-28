@@ -8,13 +8,6 @@ import { buildHtml } from "./templates.js";
 /**
  * Render a template to JPEG/PNG buffer (Playwright).
  * @param {object} input
- * @param {string} [input.template]
- * @param {object} [input.content] merged into template opts
- * @param {'story'|'square'|'wide'} [input.aspect]
- * @param {'jpeg'|'png'} [input.format]
- * @param {number} [input.quality]
- * @param {boolean} [input.watermark]
- * @param {string} [input.outPath] optional write path
  */
 export async function renderToBuffer(input = {}) {
   const content = { ...(input.content || input) };
@@ -24,6 +17,9 @@ export async function renderToBuffer(input = {}) {
   delete content.quality;
   delete content.outPath;
   delete content.returnHtml;
+  delete content.heavyWatermark;
+  delete content.blurBottom;
+  delete content.watermark;
 
   const template = input.template || content.template || "notebook";
   const aspectKey =
@@ -33,13 +29,16 @@ export async function renderToBuffer(input = {}) {
   const canvas = CANVAS[aspectKey] || CANVAS.story;
   const format = (input.format || DEFAULT_EXPORT.format).toLowerCase();
   const quality = input.quality ?? DEFAULT_EXPORT.quality;
-  const watermark =
-    input.watermark ?? content.watermark ?? false;
+  const watermark = Boolean(input.watermark);
+  const heavyWatermark = Boolean(input.heavyWatermark);
+  const blurBottom = Boolean(input.blurBottom);
 
   const html = buildHtml(template, {
     ...content,
     aspect: aspectKey,
     watermark,
+    heavyWatermark,
+    blurBottom,
   });
 
   if (input.returnHtml) {

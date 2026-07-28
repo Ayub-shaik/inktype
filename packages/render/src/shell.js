@@ -41,13 +41,18 @@ export function colorize(text, highlights = []) {
 
 /**
  * @param {string} bodyInner
- * @param {{ aspect?: keyof typeof CANVAS, watermark?: boolean, brand?: string }} opts
+ * @param {{ aspect?: keyof typeof CANVAS, watermark?: boolean, brand?: string, heavyWatermark?: boolean, blurBottom?: boolean }} opts
  */
 export function shell(bodyInner, opts = {}) {
   const aspect = CANVAS[opts.aspect || "story"] || CANVAS.story;
   const { virgilUrl, roughUrl } = assetUrls();
   const watermark = opts.watermark
-    ? `<div class="wm">made with InkType</div>`
+    ? opts.heavyWatermark
+      ? `<div class="wm wm-heavy"><div>InkType PREVIEW</div><div class="wm-sub">not for download · sign in / Pro for clean export</div></div>`
+      : `<div class="wm">made with InkType</div>`
+    : "";
+  const blur = opts.blurBottom
+    ? `<div class="preview-blur" aria-hidden="true"></div><div class="preview-blur-label">bottom half hidden — anti-misuse</div>`
     : "";
 
   return `<!DOCTYPE html>
@@ -127,6 +132,23 @@ h1{font-size:46px;line-height:1.12;color:#1c1917;margin:6px 0 12px;text-align:le
   position:absolute;right:28px;bottom:18px;z-index:5;
   font-size:18px;color:rgba(120,113,108,0.75);letter-spacing:0.04em;
 }
+.wm-heavy{
+  left:0;right:0;top:38%;bottom:auto;text-align:center;
+  font-size:52px;font-weight:700;color:rgba(185,28,28,0.55);
+  transform:rotate(-18deg);pointer-events:none;line-height:1.15;
+  text-shadow:0 2px 0 rgba(255,255,255,0.5);
+}
+.wm-heavy .wm-sub{font-size:22px;color:rgba(68,64,60,0.7);margin-top:8px;font-weight:500}
+.preview-blur{
+  position:absolute;left:0;right:0;top:50%;bottom:0;z-index:8;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:linear-gradient(to bottom, rgba(247,243,234,0.15), rgba(247,243,234,0.92));
+  pointer-events:none;
+}
+.preview-blur-label{
+  position:absolute;left:0;right:0;top:72%;z-index:9;text-align:center;
+  font-size:22px;color:rgba(68,64,60,0.75);letter-spacing:0.04em;pointer-events:none;
+}
 .scene-root{position:relative}
 .scene-stage{position:relative;flex:1;min-height:0;margin-top:8px}
 .scene-edges{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
@@ -145,6 +167,7 @@ h1{font-size:46px;line-height:1.12;color:#1c1917;margin:6px 0 12px;text-align:le
 <div class="bg-grid"></div>
 <div class="margin-rule"></div>
 ${bodyInner}
+${blur}
 ${watermark}
 <script>
 (async () => {

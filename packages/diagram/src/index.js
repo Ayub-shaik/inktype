@@ -90,19 +90,29 @@ export function suggestLayout(doc) {
 
 function nodesFromDoc(doc, max = 8) {
   const fromArrows = [];
-  for (const line of [...(doc.bullets || []), ...(doc.nodes || [])]) {
-    const parts = splitFlowLine(line);
-    if (parts) fromArrows.push(...parts);
+  const scan = [
+    ...(doc.bullets || []),
+    ...(doc.nodes || []),
+    doc.title || "",
+    doc.subtitle || "",
+    doc.freeform || "",
+  ];
+  for (const line of scan) {
+    for (const part of String(line).split("\n")) {
+      const parts = splitFlowLine(part);
+      if (parts) fromArrows.push(...parts);
+    }
   }
   if (fromArrows.length) {
-    // unique preserve order
     const seen = new Set();
-    return fromArrows.filter((n) => {
-      const k = n.toLowerCase();
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    }).slice(0, max);
+    return fromArrows
+      .filter((n) => {
+        const k = n.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, max);
   }
   const list = (doc.nodes?.length ? doc.nodes : doc.bullets) || [];
   return list.map((x) => clip(x, 40)).filter(Boolean).slice(0, max);
