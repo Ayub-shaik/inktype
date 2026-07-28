@@ -67,6 +67,22 @@ curl -s http://127.0.0.1:3041/v1/package \
 
 Brand for channel surfaces: **pager notes** / footer **fold**. Public InkType watermarks exports.
 
+## LinkedIn CTA (when public URL is live)
+
+Set `INKTYPE_PUBLIC_URL` (e.g. `https://inktype.tomorrowtools.dev`).  
+Insights-ops `approveForLinkedIn` + Telegram packages append a soft product line + UTM link.  
+Copy bank: `docs/GROWTH_LINKEDIN.md` · `automation/shared/inktypeGrowth.js`.
+
+Pattern:
+
+```
+{mentor caption}
+
+—
+Create diagrams like this quickly — type below, ink above:
+https://…/?t=notebook&utm_source=linkedin&utm_campaign=pager_notes
+```
+
 ## Migration path
 
 1. Run InkType API beside daemons  

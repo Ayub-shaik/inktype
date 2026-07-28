@@ -12,3 +12,9 @@ export {
   findFamilyId,
 } from "./fingerprint.js";
 export { BillingStore } from "./store.js";
+export {
+  publicBaseUrl,
+  inktypeShareUrl,
+  appendInktypeCta,
+  ctaVariants,
+} from "./growth.js";

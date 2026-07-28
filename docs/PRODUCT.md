@@ -24,7 +24,12 @@ Live text → templated hand-drawn diagram, optimized for phones.
 ## Internal dual-use
 The same `/v1/package` renderer powers **Pager Notes** LinkedIn cards, WhatsApp tips, and portfolio pathway slides — so product craft and channel craft do not fork.
 
+## Growth loop (when live)
+LinkedIn / Pager Notes diagrams → soft caption CTA → InkType URL (guest 1 free image).  
+See `docs/GROWTH_LINKEDIN.md`. Landing accepts `?t=flow|arch|notebook` + UTMs.
+
 ## Brand
 - Name: **InkType**
 - Feel: paper, ink, calm dark chrome around a bright “page”
 - Motto: *Type it. Ink it. Ship it.*
+- Niche line: *Create these diagrams quickly and professionally.*

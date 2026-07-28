@@ -43,6 +43,13 @@ function guestKey() {
   return v;
 }
 
+function templateFromQuery(): string | null {
+  if (typeof window === "undefined") return null;
+  const t = new URLSearchParams(window.location.search).get("t");
+  if (!t) return null;
+  return TEMPLATES.some((x) => x.id === t) ? t : null;
+}
+
 type Role = "guest" | "free" | "pro" | "admin";
 
 function authHeaders(role: Role, gKey: string): Record<string, string> {
@@ -70,6 +77,15 @@ export default function HomePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const gKey = useMemo(() => guestKey(), []);
+
+  useEffect(() => {
+    const t = templateFromQuery();
+    if (t) {
+      setTemplateId(t);
+      if (t === "arch") setText(SAMPLE_ARCH);
+      setStatus(`Opened from share link · template=${t}`);
+    }
+  }, []);
 
   const isDiagram = DIAGRAM_IDS.has(templateId);
 
