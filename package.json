@@ -1,0 +1,18 @@
+{
+  "name": "inktype",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Live text → diagram templates. Type. Ink. Share.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w inktype-web",
+    "build": "npm run build -w inktype-web",
+    "start": "npm run start -w inktype-web"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

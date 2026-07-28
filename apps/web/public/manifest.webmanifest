@@ -1,0 +1,10 @@
+{
+  "name": "InkType",
+  "short_name": "InkType",
+  "description": "Type live into diagram templates on your phone.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12100e",
+  "theme_color": "#12100e",
+  "icons": []
+}
