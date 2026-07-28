@@ -156,6 +156,15 @@ button, textarea, select { font: inherit; }
 
 .slot.empty { opacity: 0.28; }
 
+.edge-hint {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  color: #78716c;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
 .editor-wrap {
   border-top: 1px solid var(--line);
   background: var(--panel);

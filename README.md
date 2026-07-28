@@ -39,12 +39,19 @@ Not “another AI chat that draws once.” The wedge is **live typing into a des
 
 ```
 inktype/
-  apps/web/           # Next.js browser app (:3040)
-  apps/api/           # Render API (:3041) — product + channel
-  packages/core/      # live slot / reflow engine
-  packages/render/    # Virgil + Rough.js → Playwright JPEG
-  docs/               # product, architecture, channel integration
+  apps/web/           # Next.js (:3040)
+  apps/api/           # HTTP (:3041) — local-first
+  apps/mcp/           # MCP stdio — same local tools for agents
+  packages/core/      # live slots
+  packages/diagram/   # boxes / flows / arch / edges (NO AI)
+  packages/plugins/   # registry (+ gated OpenClaw structure)
+  packages/render/    # Virgil + Rough → JPEG
+  skills/             # agent skill: prefer local diagram
+  docs/               # LOCAL_FIRST, architecture, channel
 ```
+
+## Philosophy
+**Local stack first.** OpenClaw only for optional content structuring — never for drawing. Details: [`docs/LOCAL_FIRST.md`](docs/LOCAL_FIRST.md).
 
 ## Backend / tool stack (chosen)
 

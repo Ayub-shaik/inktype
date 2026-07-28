@@ -1,30 +1,33 @@
-# Backend tool decisions
+# Backend tool decisions (local-first)
 
-What we reuse from the Excalidraw ecosystem research — and what we build ourselves.
+## Build ourselves (default path)
+| Piece | Package | AI? |
+|-------|---------|-----|
+| Live slots / reflow | `@inktype/core` | no |
+| Boxes / flows / arch / edges | `@inktype/diagram` | no |
+| Plugin registry | `@inktype/plugins` | mostly no |
+| Virgil + Rough JPEG | `@inktype/render` | no |
+| HTTP API | `apps/api` | no |
+| MCP server | `apps/mcp` | tools local |
+| Agent skill | `skills/inktype-local-diagram` | instructs local |
 
-## Build ourselves
-| Piece | Reason |
-|-------|--------|
-| Live slot / reflow engine | Product core; must be instant and offline-capable |
-| Mobile split UI | Unique UX wedge |
-| Template pack format | Product IP |
+## OpenClaw (exception only)
+| Piece | When |
+|-------|------|
+| `content.structure` plugin | `INKTYPE_ALLOW_LLM=1` + user asks to tidy notes |
+| Channel mentor captions | Still owned by insights-ops, not InkType geometry |
 
-## Adopt / adapt
+## Adopt later (chrome / export — still local runtime)
 | Piece | Source | Role |
 |-------|--------|------|
-| Semantic layout ideas | [dtour/excalidraw-mcp](https://github.com/dtour/excalidraw-mcp) | Reflow when templates change |
-| Agent canvas (future) | [yctimlin/mcp_excalidraw](https://github.com/yctimlin/mcp_excalidraw) | Internal tooling / Pro “AI tidy” |
-| Chat diagram widget (future) | [excalidraw/excalidraw-mcp](https://github.com/excalidraw/excalidraw-mcp) | Optional embed, not core loop |
-| Mermaid → scene (optional) | [debu-sinha/excalidraw-mcp-server](https://github.com/debu-sinha/excalidraw-mcp-server) | Power-user paste path |
-| System-design stencils | [aretecode/…](https://github.com/aretecode/system-design-templates-excalidraw) | Template chrome |
-| Threat-model shapes | [sergey-pronin/…](https://github.com/sergey-pronin/excalidraw-threatmodeling) | Security template pack |
-| Scene composition refs | [swaymun/…](https://github.com/swaymun/system-design-excalidraws) | Design reference only |
-| Font heritage | [excalidraw/virgil](https://github.com/excalidraw/virgil) | Hand-ink feel (Excalifont later) |
-| Collab server | [excalidraw/excalidraw-room](https://github.com/excalidraw/excalidraw-room) | Phase-2 multiplayer |
-| Template authoring | [obsidian-excalidraw-plugin](https://github.com/zsviczian/obsidian-excalidraw-plugin) | Internal design vault |
+| Semantic layout ideas | dtour/excalidraw-mcp | Inspired `@inktype/diagram` |
+| System-design stencils | aretecode | Template chrome packs |
+| Threat shapes | sergey-pronin | Security pack |
+| Font | Virgil / Excalifont | Hand-ink |
+| Collab | excalidraw-room | Phase 2 |
+| Agent canvas | yctimlin / official MCP | Optional Pro tidy UI — not core loop |
 
-## Do not depend on for v1 runtime
-- Obsidian as a required client
-- AFFiNE as host
-- Per-keystroke LLM calls
-- Full Excalidraw editor chrome (keeps UX simple; export into Excalidraw later)
+## Explicit non-goals
+- Routing InkType work “through OpenClaw” by default
+- Asking a model to invent box positions
+- Obsidian / AFFiNE as required runtime

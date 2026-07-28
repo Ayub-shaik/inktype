@@ -127,6 +127,18 @@ h1{font-size:46px;line-height:1.12;color:#1c1917;margin:6px 0 12px;text-align:le
   position:absolute;right:28px;bottom:18px;z-index:5;
   font-size:18px;color:rgba(120,113,108,0.75);letter-spacing:0.04em;
 }
+.scene-root{position:relative}
+.scene-stage{position:relative;flex:1;min-height:0;margin-top:8px}
+.scene-edges{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
+.scene-label{position:absolute;z-index:2;overflow:hidden}
+.scene-title{font-size:42px;line-height:1.15;font-weight:700;color:#1c1917}
+.scene-sub{font-size:24px;color:#57534e}
+.scene-box{
+  position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:10px 12px;font-size:22px;line-height:1.2;
+}
+.scene-box svg.frame{position:absolute;inset:0;width:100%;height:100%}
+.scene-box span{position:relative;z-index:1}
 </style>
 <script src="${roughUrl}"></script>
 </head><body>

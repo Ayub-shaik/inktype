@@ -54,6 +54,8 @@ export const CHANNEL_TEMPLATES = [
   "notebook",
   "compare",
   "flow",
+  "arch",
+  "boxes",
   "commands",
   "interview",
   "pathway",

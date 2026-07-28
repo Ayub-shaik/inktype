@@ -1,61 +1,43 @@
 /**
- * Smoke: render a notebook JPEG via the library (no HTTP).
- * Usage: npm run smoke -w inktype-api
+ * Smoke: local diagram layout + JPEG (no OpenClaw).
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderToBuffer, buildPackage } from "@inktype/render";
+import { buildScene } from "@inktype/diagram";
+import { renderToBuffer } from "@inktype/render";
+import { listPlugins } from "@inktype/plugins";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, "..", "tmp");
 fs.mkdirSync(outDir, { recursive: true });
 
-const outPath = path.join(outDir, "smoke-notebook.jpg");
+const doc = {
+  title: "Canary path",
+  subtitle: "Local diagram engine",
+  bullets: ["ingress", "canary svc", "metrics", "promote"],
+  nodes: ["ingress", "canary svc", "metrics", "promote"],
+};
 
+const scene = buildScene(doc, "flow");
+const outPath = path.join(outDir, "smoke-flow.jpg");
 const result = await renderToBuffer({
-  template: "notebook",
-  content: {
-    brand: "pager notes",
-    progress: "1/5",
-    title: "InkType render smoke",
-    subtitle: "Shared backend for channel + product",
-    bullets: [
-      "Live type stays client-side",
-      "JPEG export hits this renderer",
-      "LinkedIn / WA / portfolio call /v1/package",
-    ],
-    nodes: ["type", "ink", "ship"],
-    diagram: { heading: "loop", nodes: ["type", "ink", "ship"] },
-    simpleWords: "One render path. Many surfaces.",
-  },
+  template: "flow",
+  content: { ...doc, brand: "InkType", simpleWords: "No AI drew these boxes." },
   watermark: false,
   outPath,
-});
-
-const packed = await buildPackage({
-  surface: "linkedin",
-  template: "notebook",
-  content: {
-    title: "Package check",
-    bullets: ["mentor caption separate", "teaching on image"],
-    simpleWords: "Don't dump the slide into the caption.",
-  },
-  caption: "Saw this fail in prod twice. Here's the mental model.",
 });
 
 console.log(
   JSON.stringify(
     {
+      plugins: listPlugins().map((p) => p.id),
+      sceneBoxes: scene.boxes.length,
+      sceneEdges: scene.edges.length,
       render: {
         outPath: result.outPath,
         bytes: result.buffer.length,
         size: `${result.width}x${result.height}`,
-      },
-      package: {
-        ok: packed.ok,
-        warnings: packed.warnings,
-        bytes: packed.buffer.length,
       },
     },
     null,

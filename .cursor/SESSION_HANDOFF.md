@@ -1,33 +1,31 @@
 # Cursor session handoff
 
 ## Updated
-2026-07-28T11:25:00Z
+2026-07-28T12:00:00Z
 
 ## Goal
-Ship InkType — public live text→template diagram tool (browser first, monetizable).
+InkType local-first product — diagrams without OpenClaw; LLM only for content when gated.
 
 ## Status
-done-for-now
+in progress
 
 ## Done
-- Named product **InkType**; repo https://github.com/Ayub-shaik/inktype
-- Path: `/home/shaik/Desktop/projects/inktype`
-- Docs: PRODUCT, ARCHITECTURE, MONETIZATION, TOOLING
-- `packages/core` live slot/reflow + notebook/flow/compare templates
-- `apps/web` Next.js split UI on :3040 — build passes
-- GitHub public repo created + pushed (`main`)
+- `docs/LOCAL_FIRST.md` decision tree
+- `@inktype/diagram` — flow/stack/arch/boxes + edges (no AI)
+- `@inktype/plugins` — registry; `content.structure` gated
+- `apps/mcp` + `skills/inktype-local-diagram`
+- API: `/v1/layout`, `/v1/plugins`, `/v1/structure` (403 unless `INKTYPE_ALLOW_LLM=1`)
+- Web live preview for diagram templates
+- Smoke flow JPEG OK; pushed to GitHub
 
 ## Next steps
-1. `npm run dev` locally; polish mobile UX + PNG export
-2. PDF (`pdf.js`) + image OCR (`tesseract.js`)
-3. Deploy domain + free/pro gating
-4. Android TWA later
+1. Wire pdf.js / tesseract plugins for real
+2. systemd for api; Cursor MCP config pointing at apps/mcp
+3. Deploy domain
 
 ## Gotchas
-- Live keystrokes stay client-side — no LLM per word
-- MCPs for AI tidy/export later, not the type loop
-- Next 14.2.35 (patched); still 2 audit highs in transitive deps
+- Default LLM off — structure endpoint returns 403 by design
+- Shell `OPENCLAW_GATEWAY_HOST=host.docker.internal` irrelevant to InkType geometry
 
 ## Open decisions
-- Domain (inktype.app vs tomorrowtools subdomain)
-- Pricing finalize after first users
+- Domain; when to enable LLM for Pro tidy only

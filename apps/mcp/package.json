@@ -1,0 +1,19 @@
+{
+  "name": "inktype-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "inktype-mcp": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@inktype/core": "*",
+    "@inktype/diagram": "*",
+    "@inktype/plugins": "*",
+    "@inktype/render": "*",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  }
+}

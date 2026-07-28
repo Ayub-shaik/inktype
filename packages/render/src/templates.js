@@ -1,4 +1,7 @@
 import { colorize, esc, formatProgress, shell } from "./shell.js";
+import { buildSceneBody } from "./sceneHtml.js";
+import { buildScene } from "@inktype/diagram";
+import { parseContent } from "@inktype/core";
 
 function headerBar(opts) {
   const progress = esc(formatProgress(opts.progress || opts.slide || "1/5"));
@@ -258,11 +261,40 @@ export function buildAtlasHtml(opts) {
 /** Map ContentDoc / API body → template HTML. */
 export function buildHtml(template, opts = {}) {
   const t = String(template || "notebook").toLowerCase();
+
+  // Diagram templates: local scene engine (boxes / edges) — never OpenClaw geometry
+  if (t === "flow" || t === "arch" || t === "boxes" || t === "stack" || t === "diagram") {
+    const layout =
+      t === "diagram" ? opts.layout || "auto" : t === "flow" ? "flow" : t;
+    const doc =
+      opts.doc ||
+      (opts.title || opts.bullets || opts.nodes
+        ? {
+            title: opts.title,
+            subtitle: opts.subtitle,
+            bullets: opts.bullets || [],
+            nodes: opts.nodes || [],
+            freeform: opts.freeform || "",
+          }
+        : parseContent(opts.text || opts.freeform || ""));
+    const scene = opts.scene || buildScene(doc, layout);
+    const body = buildSceneBody(scene, {
+      brand: opts.brand,
+      progress: opts.progress || opts.slide,
+      fold: opts.simpleWords || opts.fold || opts.simple_words || "",
+      footerTitle: opts.footerTitle,
+    });
+    return shell(body, {
+      aspect: opts.aspect || (layout === "flow" ? "wide" : "story"),
+      watermark: Boolean(opts.watermark),
+    });
+  }
+
   if (t === "compare") return buildCompareHtml(opts);
-  if (t === "flow") return buildFlowHtml(opts);
   if (t === "commands") return buildCommandsHtml(opts);
   if (t === "interview") return buildInterviewHtml(opts);
   if (t === "pathway") return buildPathwayHtml(opts);
   if (t === "atlas") return buildAtlasHtml(opts);
+  // legacy flow html kept only if scene fails — prefer scene above
   return buildNotebookHtml(opts);
 }

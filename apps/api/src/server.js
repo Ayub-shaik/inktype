@@ -9,9 +9,12 @@ import {
   renderToBuffer,
 } from "@inktype/render";
 import { TEMPLATES, liveFill, parseContent } from "@inktype/core";
+import { buildScene, suggestLayout } from "@inktype/diagram";
+import { listPlugins, runPlugin } from "@inktype/plugins";
 
 const PORT = Number(process.env.INKTYPE_API_PORT || 3041);
 const INTERNAL_TOKEN = process.env.INKTYPE_INTERNAL_TOKEN || "";
+const ALLOW_LLM = process.env.INKTYPE_ALLOW_LLM === "1";
 
 const app = express();
 app.use(cors());
@@ -27,7 +30,28 @@ function requireInternal(req, res, next) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "inktype-api", port: PORT });
+  res.json({
+    ok: true,
+    service: "inktype-api",
+    port: PORT,
+    allowLlm: ALLOW_LLM,
+    stack: "local-first",
+  });
+});
+
+app.get("/v1/plugins", (_req, res) => {
+  res.json({ plugins: listPlugins(), allowLlm: ALLOW_LLM });
+});
+
+app.post("/v1/plugins/:id", async (req, res) => {
+  try {
+    const out = await runPlugin(req.params.id, req.body || {}, {
+      allowLlm: ALLOW_LLM || Boolean(req.body?.allowLlm),
+    });
+    res.json(out);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
 });
 
 app.get("/v1/templates", (_req, res) => {
@@ -41,6 +65,7 @@ app.get("/v1/templates", (_req, res) => {
     channel: CHANNEL_TEMPLATES,
     canvas: CANVAS,
     surfaces: Object.keys(SURFACES),
+    plugins: listPlugins().filter((p) => !p.ai),
   });
 });
 
@@ -52,11 +77,38 @@ app.get("/v1/themes", (_req, res) => {
   });
 });
 
+/** Local layout only — boxes/edges. */
+app.post("/v1/layout", (req, res) => {
+  const doc = req.body?.doc || parseContent(req.body?.text || "");
+  const layout = req.body?.layout || "auto";
+  const scene = buildScene(doc, layout);
+  res.json({
+    suggested: suggestLayout(doc),
+    layout: scene.layout,
+    scene,
+    source: "local",
+  });
+});
+
 /** Preview structure without screenshot (cheap). */
 app.post("/v1/preview", (req, res) => {
   const template = req.body?.template || "notebook";
   const text = req.body?.text || "";
   const content = req.body?.content;
+  if (
+    template === "flow" ||
+    template === "arch" ||
+    template === "boxes" ||
+    template === "stack"
+  ) {
+    const doc = content || parseContent(text);
+    return res.json({
+      template,
+      content: doc,
+      scene: buildScene(doc, template === "flow" ? "flow" : template),
+      source: "diagram",
+    });
+  }
   if (content) {
     return res.json({ template, content, source: "structured" });
   }
@@ -70,8 +122,30 @@ app.post("/v1/preview", (req, res) => {
 });
 
 /**
+ * OPTIONAL OpenClaw — content fields only. Disabled unless INKTYPE_ALLOW_LLM=1.
+ */
+app.post("/v1/structure", async (req, res) => {
+  if (!ALLOW_LLM) {
+    return res.status(403).json({
+      error:
+        "LLM disabled (local-first). Use POST /v1/layout or parse.content. Set INKTYPE_ALLOW_LLM=1 to enable.",
+      hint: "Local alternative: POST /v1/preview with raw text",
+    });
+  }
+  try {
+    const out = await runPlugin(
+      "content.structure",
+      { text: req.body?.text || "" },
+      { allowLlm: true },
+    );
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+/**
  * Public/product render.
- * Body: { template, content|text, aspect, format, watermark }
  */
 app.post("/v1/render", async (req, res) => {
   try {
@@ -86,6 +160,7 @@ app.post("/v1/render", async (req, res) => {
     if (req.body?.brand) content.brand = req.body.brand;
     if (req.body?.progress) content.progress = req.body.progress;
     if (req.body?.fold) content.simpleWords = req.body.fold;
+    if (req.body?.layout) content.layout = req.body.layout;
 
     const result = await renderToBuffer({
       template: req.body?.template || "notebook",
@@ -118,10 +193,6 @@ app.post("/v1/render", async (req, res) => {
   }
 });
 
-/**
- * Internal channel package for LinkedIn / WhatsApp / portfolio.
- * Auth: INKTYPE_INTERNAL_TOKEN when set.
- */
 app.post("/v1/package", requireInternal, async (req, res) => {
   try {
     let content = req.body?.content;
@@ -172,5 +243,7 @@ app.post("/v1/package", requireInternal, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`inktype-api listening on :${PORT}`);
+  console.log(
+    `inktype-api listening on :${PORT} (local-first, llm=${ALLOW_LLM ? "on" : "off"})`,
+  );
 });
