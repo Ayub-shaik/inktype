@@ -15,7 +15,7 @@
     "start": "npm run start -w inktype-web",
     "start:api": "npm run start -w inktype-api",
     "smoke:api": "npm run smoke -w inktype-api",
-    "test": "node --test packages/billing/test/*.test.js packages/diagram/test/*.test.js && INKTYPE_API_NO_LISTEN=1 INKTYPE_TEST_MODE=1 node --test apps/api/test/*.test.js"
+    "test": "node --test packages/billing/test/*.test.js packages/diagram/test/*.test.js && INKTYPE_API_NO_LISTEN=1 INKTYPE_TEST_MODE=1 INKTYPE_AUTH_DISABLE=1 node --test apps/api/test/*.test.js"
   },
   "engines": {
     "node": ">=18"

@@ -176,6 +176,29 @@ registerPlugin({
   },
 });
 
+/**
+ * Optional Fooocus doodle assets (env-gated). Does not draw diagrams.
+ * FOOOCUS_ENABLED=1 FOOOCUS_URL=http://127.0.0.1:7865
+ */
+registerPlugin({
+  id: "assets.fooocus-doodle",
+  kind: "assets",
+  ai: false,
+  description:
+    "Resolve/cached Fooocus doodle for paper craft (laptop/docker/sun). Optional sidecar.",
+  async run(input) {
+    const { resolveDoodleAsset, fooocusEnabled, pingFooocus } = await import(
+      "./fooocusDoodle.js"
+    );
+    if (!fooocusEnabled()) {
+      return { ok: false, skipped: true, reason: "FOOOCUS_ENABLED not set" };
+    }
+    const ping = await pingFooocus();
+    const asset = await resolveDoodleAsset(input.text || input.prompt || "");
+    return { ok: Boolean(asset.path) || ping.ok, ping, asset };
+  },
+});
+
 export const LOCAL_PLUGIN_IDS = [
   "parse.content",
   "layout.flow",
@@ -187,4 +210,5 @@ export const LOCAL_PLUGIN_IDS = [
   "extract.text",
   "extract.pdf",
   "extract.ocr",
+  "assets.fooocus-doodle",
 ];

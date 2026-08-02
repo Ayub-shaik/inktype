@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 process.env.INKTYPE_API_NO_LISTEN = "1";
 process.env.INKTYPE_TEST_MODE = "1";
+process.env.INKTYPE_AUTH_DISABLE = "1";
 process.env.INKTYPE_BILLING_PATH = path.join(
   os.tmpdir(),
   `inktype-api-billing-${Date.now()}.json`,
@@ -121,5 +122,50 @@ describe("API billing gates", () => {
     assert.equal(data.role, "admin");
     assert.equal(data.unlimited, true);
     assert.equal(data.exportsLimit, null);
+  });
+
+  it("POST /v1/render accepts template alias and returns JPEG attachment", async () => {
+    billing.reset();
+    const res = await fetch(`${ctx.base}/v1/render`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer admin",
+      },
+      body: JSON.stringify({
+        template: "stack",
+        text: "A\n│\n▼\nB\n│\n▼\nC",
+        paperStyle: "ruled",
+        format: "jpeg",
+      }),
+    });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /image\/jpeg/);
+    assert.match(
+      res.headers.get("content-disposition") || "",
+      /attachment;.*inktype-stack\.jpg/i,
+    );
+    const buf = Buffer.from(await res.arrayBuffer());
+    assert.ok(buf.length > 1000, `expected non-trivial jpeg, got ${buf.length}`);
+    assert.equal(buf[0], 0xff);
+    assert.equal(buf[1], 0xd8);
+  });
+
+  it("POST /v1/layout stack has connectors that rebind after overrides", async () => {
+    const { status, data } = await json("POST", "/v1/layout", {
+      body: {
+        text: "A\n▼\nB\n▼\nC",
+        layout: "stack",
+        overrides: { n0: { x: 0.15, y: 0.65 } },
+      },
+      headers: {
+        authorization: "Bearer guest",
+        "x-inktype-guest-key": "api-guest-connectors",
+      },
+    });
+    assert.equal(status, 200);
+    assert.equal(data.scene.layout, "stack");
+    assert.equal(data.scene.edges.length, 2);
+    assert.ok(data.scene.boxes[0].y > 0.5);
   });
 });

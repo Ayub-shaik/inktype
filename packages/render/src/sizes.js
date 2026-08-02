@@ -56,6 +56,7 @@ export const CHANNEL_TEMPLATES = [
   "flow",
   "arch",
   "boxes",
+  "tree",
   "commands",
   "interview",
   "pathway",

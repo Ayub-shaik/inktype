@@ -30,7 +30,18 @@
  * @property {string[]} bullets
  * @property {string[]} nodes
  * @property {string} freeform
+ * @property {'vertical'|'horizontal'|null} [flow]
+ * @property {'tree'|null} [kind]
+ * @property {import('./tree.js').TreeNode[]} [tree]
  */
+
+export {
+  looksLikeTreeText,
+  parseTree,
+  flattenTree,
+  countTreeNodes,
+} from "./tree.js";
+import { looksLikeTreeText, parseTree, flattenTree } from "./tree.js";
 
 /**
  * @typedef {object} FilledSlot
@@ -59,7 +70,7 @@ export const TEMPLATES = /** @type {Template[]} */ ([
   {
     id: "flow",
     name: "Flow",
-    blurb: "Local boxes + arrows (no AI layout)",
+    blurb: "Horizontal process (A → B → C)",
     aspect: "wide",
     background: "grid",
     ingest: "title-then-bullets",
@@ -70,6 +81,23 @@ export const TEMPLATES = /** @type {Template[]} */ ([
       { id: "n3", role: "node", x: 0.53, y: 0.4, w: 0.18, h: 0.28, maxChars: 28, style: "body" },
       { id: "n4", role: "node", x: 0.77, y: 0.4, w: 0.18, h: 0.28, maxChars: 28, style: "body" },
       { id: "cap", role: "caption", x: 0.05, y: 0.82, w: 0.9, h: 0.1, maxChars: 80, style: "label" },
+    ],
+  },
+  {
+    id: "stack",
+    name: "Pipeline",
+    blurb: "Vertical flowchart (A ▼ B ▼ C)",
+    aspect: "story",
+    background: "grid",
+    ingest: "title-then-bullets",
+    slots: [
+      { id: "t", role: "title", x: 0.08, y: 0.04, w: 0.84, h: 0.08, maxChars: 48, style: "title" },
+      { id: "n1", role: "node", x: 0.1, y: 0.16, w: 0.8, h: 0.1, maxChars: 72, style: "body" },
+      { id: "n2", role: "node", x: 0.1, y: 0.3, w: 0.8, h: 0.1, maxChars: 72, style: "body" },
+      { id: "n3", role: "node", x: 0.1, y: 0.44, w: 0.8, h: 0.1, maxChars: 72, style: "body" },
+      { id: "n4", role: "node", x: 0.1, y: 0.58, w: 0.8, h: 0.1, maxChars: 72, style: "body" },
+      { id: "n5", role: "node", x: 0.1, y: 0.72, w: 0.8, h: 0.1, maxChars: 72, style: "body" },
+      { id: "cap", role: "caption", x: 0.08, y: 0.9, w: 0.84, h: 0.05, maxChars: 60, style: "label" },
     ],
   },
   {
@@ -104,6 +132,23 @@ export const TEMPLATES = /** @type {Template[]} */ ([
     ],
   },
   {
+    id: "tree",
+    name: "Tree",
+    blurb: "Hierarchy (├── org / system map)",
+    aspect: "story",
+    background: "paper",
+    ingest: "title-then-bullets",
+    slots: [
+      { id: "t", role: "title", x: 0.08, y: 0.04, w: 0.84, h: 0.08, maxChars: 64, style: "title" },
+      { id: "n1", role: "node", x: 0.1, y: 0.16, w: 0.7, h: 0.08, maxChars: 72, style: "body" },
+      { id: "n2", role: "node", x: 0.16, y: 0.28, w: 0.7, h: 0.08, maxChars: 72, style: "body" },
+      { id: "n3", role: "node", x: 0.16, y: 0.4, w: 0.7, h: 0.08, maxChars: 72, style: "body" },
+      { id: "n4", role: "node", x: 0.16, y: 0.52, w: 0.7, h: 0.08, maxChars: 72, style: "body" },
+      { id: "n5", role: "node", x: 0.16, y: 0.64, w: 0.7, h: 0.08, maxChars: 72, style: "body" },
+      { id: "cap", role: "caption", x: 0.08, y: 0.9, w: 0.84, h: 0.05, maxChars: 60, style: "label" },
+    ],
+  },
+  {
     id: "compare",
     name: "Compare",
     blurb: "Two-column before / after",
@@ -126,12 +171,84 @@ export function getTemplate(id) {
   return TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
 }
 
+/** Lines that are only flowchart connectors (ASCII / box-drawing). */
+export function isConnectorLine(line) {
+  const t = String(line || "").trim();
+  if (!t) return true;
+  // pure connector glyphs: │ ▼ ↓ → etc.
+  if (/^[│┃┊┆|║\-\s─━├┤┬┴┼└┘┌┐▲▼◀▶↑↓←→⟷⇔]+$/u.test(t)) return true;
+  if (/^(?:\|\s*)+$/.test(t)) return true;
+  return false;
+}
+
+/**
+ * Detect vertical ASCII flowchart:
+ *   Step A
+ *     │
+ *     ▼
+ *   Step B
+ */
+export function extractVerticalFlow(raw) {
+  const lines = String(raw || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const connectorHits = lines.filter(isConnectorLine).length;
+  const hasDown =
+    connectorHits >= 1 &&
+    lines.some((l) => /[▼↓⇣vV]/.test(l) || /^[│┃|]+$/.test(l));
+  if (!hasDown || connectorHits < 1) return null;
+
+  const nodes = lines.filter((l) => !isConnectorLine(l));
+  if (nodes.length < 2) return null;
+  return {
+    title: "",
+    subtitle: "",
+    bullets: nodes,
+    nodes,
+    freeform: String(raw || ""),
+    flow: "vertical",
+  };
+}
+
 /** Parse raw editor text into a semantic content doc. */
 export function parseContent(raw) {
   const text = String(raw || "").replace(/\r\n/g, "\n").trim();
   if (!text) {
-    return { title: "", subtitle: "", bullets: [], nodes: [], freeform: "" };
+    return {
+      title: "",
+      subtitle: "",
+      bullets: [],
+      nodes: [],
+      freeform: "",
+      flow: null,
+      kind: null,
+      tree: null,
+    };
   }
+
+  // Hierarchy before vertical flow — ├── trees are not pipelines
+  if (looksLikeTreeText(text)) {
+    const tree = parseTree(text);
+    if (tree.length) {
+      const flat = flattenTree(tree);
+      const root = tree[0];
+      return {
+        title: root.label,
+        subtitle: "",
+        bullets: flat.slice(1).map((n) => n.label),
+        nodes: flat.map((n) => n.label),
+        freeform: text,
+        flow: null,
+        kind: "tree",
+        tree,
+      };
+    }
+  }
+
+  const vertical = extractVerticalFlow(text);
+  if (vertical) return { ...vertical, kind: null, tree: null };
 
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const bulletish = lines.filter((l) => /^[-*•]\s+/.test(l) || /^\d+[.)]\s+/.test(l));
@@ -141,21 +258,30 @@ export function parseContent(raw) {
 
   const title = lines[0] || "";
   const subtitle =
-    lines.length > 1 && !/^[-*•]/.test(lines[1]) && !/^\d+[.)]/.test(lines[1])
+    lines.length > 1 &&
+    !/^[-*•]/.test(lines[1]) &&
+    !/^\d+[.)]/.test(lines[1]) &&
+    !isConnectorLine(lines[1])
       ? lines[1]
       : "";
 
   const bullets =
     bulletish.length > 0
       ? cleanBullets
-      : lines.slice(subtitle ? 2 : 1).filter(Boolean);
+      : lines
+          .slice(subtitle ? 2 : 1)
+          .filter((l) => !isConnectorLine(l))
+          .filter(Boolean);
 
   return {
     title,
     subtitle,
     bullets,
-    nodes: bullets.slice(0, 8),
+    nodes: bullets.slice(0, 48),
     freeform: text,
+    flow: null,
+    kind: null,
+    tree: null,
   };
 }
 

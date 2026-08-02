@@ -20,7 +20,7 @@ export class BillingStore {
     this.dataPath =
       opts.dataPath ||
       path.join(process.cwd(), "data", "billing-ledger.json");
-    this.state = { users: {}, guests: {} };
+    this.state = { users: {}, guests: {}, subscribers: {}, payments: {} };
     this._load();
   }
 
@@ -30,8 +30,12 @@ export class BillingStore {
         this.state = JSON.parse(fs.readFileSync(this.dataPath, "utf8"));
       }
     } catch {
-      this.state = { users: {}, guests: {} };
+      this.state = { users: {}, guests: {}, subscribers: {}, payments: {} };
     }
+    this.state.users = this.state.users || {};
+    this.state.guests = this.state.guests || {};
+    this.state.subscribers = this.state.subscribers || {};
+    this.state.payments = this.state.payments || {};
   }
 
   _save() {
@@ -83,12 +87,65 @@ export class BillingStore {
         `g_${crypto.createHash("sha256").update(String(h("x-forwarded-for") || h("user-agent") || crypto.randomUUID())).digest("hex").slice(0, 16)}`;
       return { role: "guest", userId: null, guestKey: key, plan: planOf("guest") };
     }
+    const uid = userId || "anon";
+    // Paid Pro from Dodo webhook overrides free/demo role (not admin)
+    if (role !== "admin") {
+      const sub = this.state.subscribers?.[uid];
+      if (sub?.role === "pro" && (!sub.expiresAt || Date.parse(sub.expiresAt) > Date.now())) {
+        role = "pro";
+      }
+    }
     return {
       role,
-      userId: userId || "anon",
+      userId: uid,
       guestKey: null,
       plan: planOf(role),
     };
+  }
+
+  /**
+   * Grant Pro after verified Dodo payment.webhook.
+   * Idempotent on paymentId.
+   */
+  grantProFromPayment({
+    userId,
+    paymentId,
+    productId,
+    customerId,
+    amount,
+    currency,
+    rawType,
+  } = {}) {
+    const uid = String(userId || "").trim() || "anon";
+    const payId = String(paymentId || "").trim();
+    if (payId && this.state.payments[payId]) {
+      return { ok: true, replay: true, subscriber: this.state.subscribers[uid] };
+    }
+    const now = new Date();
+    const expires = new Date(now);
+    expires.setUTCMonth(expires.getUTCMonth() + 1);
+    const row = {
+      role: "pro",
+      userId: uid,
+      paymentId: payId || null,
+      productId: productId || null,
+      customerId: customerId || null,
+      amount: amount ?? null,
+      currency: currency || null,
+      sourceEvent: rawType || "payment.succeeded",
+      grantedAt: now.toISOString(),
+      expiresAt: expires.toISOString(),
+    };
+    this.state.subscribers[uid] = row;
+    if (payId) {
+      this.state.payments[payId] = {
+        userId: uid,
+        at: now.toISOString(),
+        type: rawType || "payment.succeeded",
+      };
+    }
+    this._save();
+    return { ok: true, replay: false, subscriber: row };
   }
 
   _bucket(identity) {
@@ -335,7 +392,7 @@ export class BillingStore {
 
   /** Test helper */
   reset() {
-    this.state = { users: {}, guests: {} };
+    this.state = { users: {}, guests: {}, subscribers: {}, payments: {} };
     this._save();
   }
 }

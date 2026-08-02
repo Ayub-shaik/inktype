@@ -4,6 +4,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { CANVAS, DEFAULT_EXPORT } from "./sizes.js";
 import { buildHtml } from "./templates.js";
+import { measureCanvas, buildScene } from "@inktype/diagram";
+import { parseContent } from "@inktype/core";
 
 /**
  * Render a template to JPEG/PNG buffer (Playwright).
@@ -21,28 +23,54 @@ export async function renderToBuffer(input = {}) {
   delete content.blurBottom;
   delete content.watermark;
 
-  const template = input.template || content.template || "notebook";
+  const template =
+    input.template ||
+    input.templateId ||
+    content.template ||
+    content.templateId ||
+    "notebook";
   const aspectKey =
     input.aspect ||
     content.aspect ||
     (template === "flow" ? "wide" : "story");
-  const canvas = CANVAS[aspectKey] || CANVAS.story;
+  const base = CANVAS[aspectKey] || CANVAS.story;
   const format = (input.format || DEFAULT_EXPORT.format).toLowerCase();
   const quality = input.quality ?? DEFAULT_EXPORT.quality;
-  const watermark = Boolean(input.watermark);
-  const heavyWatermark = Boolean(input.heavyWatermark);
-  const blurBottom = Boolean(input.blurBottom);
+  const watermark = Boolean(input.watermark ?? input.protection?.watermark);
+  const heavyWatermark = Boolean(
+    input.heavyWatermark ?? input.protection?.heavy,
+  );
+  const blurBottom = Boolean(input.blurBottom ?? input.protection?.blurBottom);
+
+  let scene = input.scene || content.scene || null;
+  const diagramIds = new Set(["flow", "stack", "arch", "boxes", "tree", "diagram"]);
+  if (!scene && diagramIds.has(String(template))) {
+    const doc =
+      content.doc ||
+      parseContent(content.text || content.freeform || input.text || "");
+    const layout =
+      template === "diagram" ? content.layout || "auto" : template;
+    scene = buildScene(doc, layout);
+  }
+  const measured = measureCanvas(scene, base);
+  const width = input.width || content.width || measured.width;
+  const height = input.height || content.height || measured.height;
 
   const html = buildHtml(template, {
     ...content,
     aspect: aspectKey,
+    width,
+    height,
     watermark,
     heavyWatermark,
     blurBottom,
+    paperStyle: input.paperStyle || content.paperStyle,
+    fontFamily: input.fontFamily || content.fontFamily || "virgil",
+    scene,
   });
 
   if (input.returnHtml) {
-    return { html, width: canvas.width, height: canvas.height, format, template };
+    return { html, width, height, format, template };
   }
 
   const tmpHtml = path.join(
@@ -58,7 +86,7 @@ export async function renderToBuffer(input = {}) {
 
   try {
     const page = await browser.newPage({
-      viewport: { width: canvas.width, height: canvas.height },
+      viewport: { width, height },
       deviceScaleFactor: 1,
     });
     await page.goto(`file://${tmpHtml}`, { waitUntil: "networkidle" });
@@ -73,6 +101,8 @@ export async function renderToBuffer(input = {}) {
     const buffer = await page.screenshot({
       type,
       quality: type === "jpeg" ? quality : undefined,
+      fullPage: false,
+      clip: { x: 0, y: 0, width, height },
     });
 
     if (input.outPath) {
@@ -82,8 +112,8 @@ export async function renderToBuffer(input = {}) {
 
     return {
       buffer,
-      width: canvas.width,
-      height: canvas.height,
+      width,
+      height,
       format: type,
       template,
       mime: type === "png" ? "image/png" : "image/jpeg",

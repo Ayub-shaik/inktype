@@ -28,6 +28,7 @@ function wrap(opts, bodyInner) {
     watermark: Boolean(opts.watermark),
     heavyWatermark: Boolean(opts.heavyWatermark),
     blurBottom: Boolean(opts.blurBottom),
+    paperStyle: opts.paperStyle || "ruled",
   });
 }
 
@@ -265,18 +266,27 @@ export function buildHtml(template, opts = {}) {
   const t = String(template || "notebook").toLowerCase();
 
   // Diagram templates: local scene engine (boxes / edges) — never OpenClaw geometry
-  if (t === "flow" || t === "arch" || t === "boxes" || t === "stack" || t === "diagram") {
+  if (
+    t === "flow" ||
+    t === "arch" ||
+    t === "boxes" ||
+    t === "stack" ||
+    t === "tree" ||
+    t === "diagram"
+  ) {
     const layout =
       t === "diagram" ? opts.layout || "auto" : t === "flow" ? "flow" : t;
     const doc =
       opts.doc ||
-      (opts.title || opts.bullets || opts.nodes
+      (opts.title || opts.bullets || opts.nodes || opts.tree
         ? {
             title: opts.title,
             subtitle: opts.subtitle,
             bullets: opts.bullets || [],
             nodes: opts.nodes || [],
-            freeform: opts.freeform || "",
+            freeform: opts.freeform || opts.text || "",
+            tree: opts.tree,
+            kind: opts.kind,
           }
         : parseContent(opts.text || opts.freeform || ""));
     const scene = opts.scene || buildScene(doc, layout);
@@ -286,11 +296,16 @@ export function buildHtml(template, opts = {}) {
       fold: opts.simpleWords || opts.fold || opts.simple_words || "",
       footerTitle: opts.footerTitle,
     });
+    const canvas = scene.canvas || {};
     return shell(body, {
       aspect: opts.aspect || (layout === "flow" ? "wide" : "story"),
+      width: canvas.width || opts.width,
+      height: canvas.height || opts.height,
       watermark: Boolean(opts.watermark),
       heavyWatermark: Boolean(opts.heavyWatermark),
       blurBottom: Boolean(opts.blurBottom),
+      paperStyle: opts.paperStyle || "ruled",
+      fontFamily: opts.fontFamily || "virgil",
     });
   }
 

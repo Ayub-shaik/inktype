@@ -41,11 +41,46 @@ export function colorize(text, highlights = []) {
 
 /**
  * @param {string} bodyInner
- * @param {{ aspect?: keyof typeof CANVAS, watermark?: boolean, brand?: string, heavyWatermark?: boolean, blurBottom?: boolean }} opts
+ * @param {{ aspect?: keyof typeof CANVAS, width?: number, height?: number, fontFamily?: string, watermark?: boolean, brand?: string, heavyWatermark?: boolean, blurBottom?: boolean }} opts
  */
 export function shell(bodyInner, opts = {}) {
-  const aspect = CANVAS[opts.aspect || "story"] || CANVAS.story;
+  const preset = CANVAS[opts.aspect || "story"] || CANVAS.story;
+  const width = Math.max(640, Number(opts.width || preset.width) || preset.width);
+  const height = Math.max(640, Number(opts.height || preset.height) || preset.height);
   const { virgilUrl, roughUrl } = assetUrls();
+  const paper = String(opts.paperStyle || "ruled");
+  const fontKey = String(opts.fontFamily || "virgil").toLowerCase();
+  const fontStack =
+    fontKey === "serif"
+      ? "Georgia,'Times New Roman',serif"
+      : fontKey === "sans"
+        ? "'IBM Plex Sans',system-ui,sans-serif"
+        : fontKey === "mono"
+          ? "ui-monospace,Menlo,Consolas,monospace"
+          : "'Virgil','Comic Sans MS',cursive";
+  const paperBg =
+    paper === "sticky"
+      ? "#fef9c3"
+      : paper === "dark"
+        ? "#0c0a09"
+        : paper === "messy"
+          ? "#f7f3ea"
+          : paper === "grid"
+            ? "#efe8da"
+            : paper === "clipped"
+              ? "#f3efe4"
+              : "#f4ecd8";
+  const ink = paper === "dark" ? "#f5f5f4" : "#1c1917";
+  const paperLayer =
+    paper === "ruled"
+      ? `<div class="bg-ruled"></div><div class="margin-rule"></div>`
+      : paper === "sticky" || paper === "dark"
+        ? ""
+        : `<div class="bg-grid"></div><div class="margin-rule"></div>`;
+  const tape =
+    paper === "clipped"
+      ? `<div class="tape tape-a"></div><div class="tape tape-b"></div>`
+      : "";
   const watermark = opts.watermark
     ? opts.heavyWatermark
       ? `<div class="wm wm-heavy"><div>InkType PREVIEW</div><div class="wm-sub">not for download · sign in / Pro for clean export</div></div>`
@@ -54,6 +89,11 @@ export function shell(bodyInner, opts = {}) {
   const blur = opts.blurBottom
     ? `<div class="preview-blur" aria-hidden="true"></div><div class="preview-blur-label">bottom half hidden — anti-misuse</div>`
     : "";
+  /* Desk-photo craft: CSS-only grain/vignette/soft warp — no local SD */
+  const craft =
+    `<div class="craft-grain" aria-hidden="true"></div>` +
+    `<div class="craft-vignette" aria-hidden="true"></div>` +
+    `<div class="craft-warp" aria-hidden="true"></div>`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" />
@@ -61,9 +101,9 @@ export function shell(bodyInner, opts = {}) {
 @font-face{font-family:'Virgil';src:url('${virgilUrl}') format('woff2');font-display:block}
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  width:${aspect.width}px;height:${aspect.height}px;
-  font-family:'Virgil','Comic Sans MS',cursive;
-  background:#f7f3ea;color:#1c1917;position:relative;overflow:hidden;
+  width:${width}px;height:${height}px;
+  font-family:${fontStack};
+  background:${paperBg};color:${ink};position:relative;overflow:hidden;
 }
 .bg-grid{
   position:absolute;inset:0;
@@ -71,6 +111,13 @@ body{
     linear-gradient(rgba(120,113,108,0.12) 1px, transparent 1px),
     linear-gradient(90deg, rgba(120,113,108,0.12) 1px, transparent 1px);
   background-size:32px 32px;
+  pointer-events:none;
+}
+.bg-ruled{
+  position:absolute;inset:0;
+  background-image: repeating-linear-gradient(
+    transparent, transparent 39px, rgba(37,99,235,0.18) 39px, rgba(37,99,235,0.18) 40px
+  );
   pointer-events:none;
 }
 .margin-rule{
@@ -129,7 +176,7 @@ h1{font-size:46px;line-height:1.12;color:#1c1917;margin:6px 0 12px;text-align:le
 .chain .chip span{position:relative;z-index:1}
 .chain .sep{color:#78716c}
 .wm{
-  position:absolute;right:28px;bottom:18px;z-index:5;
+  position:absolute;right:28px;bottom:18px;z-index:10;
   font-size:18px;color:rgba(120,113,108,0.75);letter-spacing:0.04em;
 }
 .wm-heavy{
@@ -161,12 +208,40 @@ h1{font-size:46px;line-height:1.12;color:#1c1917;margin:6px 0 12px;text-align:le
 }
 .scene-box svg.frame{position:absolute;inset:0;width:100%;height:100%}
 .scene-box span{position:relative;z-index:1}
+.scene-doodles{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.tape{position:absolute;z-index:6;width:90px;height:28px;background:rgba(253,224,71,0.55);transform:rotate(-8deg);box-shadow:0 1px 2px rgba(0,0,0,0.08)}
+.tape-a{top:18px;left:70px}
+.tape-b{top:22px;right:48px;transform:rotate(12deg);background:rgba(253,186,116,0.5)}
+/* desk-photo craft overlays */
+.craft-grain{
+  position:absolute;inset:0;z-index:7;pointer-events:none;
+  opacity:${paper === "dark" ? "0.12" : "0.22"};
+  mix-blend-mode:${paper === "dark" ? "screen" : "multiply"};
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.18 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+}
+.craft-vignette{
+  position:absolute;inset:0;z-index:7;pointer-events:none;
+  background:radial-gradient(ellipse 78% 70% at 48% 42%,
+    transparent 40%,
+    ${paper === "dark" ? "rgba(0,0,0,0.55)" : "rgba(55,40,22,0.22)"} 100%);
+}
+.craft-warp{
+  position:absolute;inset:0;z-index:7;pointer-events:none;
+  box-shadow:
+    inset 0 0 120px rgba(40,28,12,${paper === "dark" ? "0.35" : "0.10"}),
+    inset 0 -28px 60px rgba(28,20,10,${paper === "dark" ? "0.25" : "0.07"}),
+    inset 18px 0 40px rgba(255,248,230,${paper === "dark" ? "0" : "0.12"});
+  background:
+    linear-gradient(118deg, rgba(255,252,245,${paper === "dark" ? "0.04" : "0.14"}) 0%, transparent 38%, transparent 62%, rgba(40,28,12,${paper === "dark" ? "0.12" : "0.06"}) 100%);
+}
 </style>
 <script src="${roughUrl}"></script>
-</head><body>
-<div class="bg-grid"></div>
-<div class="margin-rule"></div>
+</head><body data-paper="${paper}">
+${paperLayer}
+${tape}
 ${bodyInner}
+${craft}
 ${blur}
 ${watermark}
 <script>
@@ -174,7 +249,7 @@ ${watermark}
   try { await document.fonts.ready; } catch (e) {}
   await new Promise(r => setTimeout(r, 160));
   const rc = rough.svg;
-  document.querySelectorAll('.section svg.frame, .footer svg.frame, .badge svg, .node svg, .stop-num svg, .panel svg.frame, .chip svg, .flow-node svg').forEach((svg) => {
+  document.querySelectorAll('.section svg.frame, .footer svg.frame, .badge svg, .node svg, .stop-num svg, .panel svg.frame, .chip svg, .flow-node svg, .scene-box svg.frame').forEach((svg) => {
     if (!svg.parentElement) return;
     const stroke = svg.getAttribute('data-stroke') || '#44403c';
     const dash = svg.getAttribute('data-dash') === '1';
@@ -191,6 +266,7 @@ ${watermark}
     if (dash) opts.strokeLineDash = [8, 7];
     svg.appendChild(g.rectangle(3, 3, Math.max(8, w - 6), Math.max(8, h - 6), opts));
   });
+  // Rough-ish polyline overlays for dotted connectors already in SVG; boost wobble via path jitter if rough.curve exists
   document.body.setAttribute('data-ready', '1');
 })();
 </script>
