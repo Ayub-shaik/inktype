@@ -1,37 +1,34 @@
-# Cursor session handoff
+2026-09-10 07:10 IST — # Cursor session handoff
 
-## Updated
-2026-08-02T23:14:50Z
+2026-09-10 07:10 IST — ## Updated
+2026-09-10 07:10 IST — 2026-09-10T07:10:00+05:30 (restamp; last real work 2026-08-02)
 
-## Goal
-Ship InkType as a canvas-first SaaS: paste → smart layout → handwritten-on-paper diagrams. Quality over paywall. Live: `https://inktype.tomorrowtools.dev`.
+2026-09-10 07:10 IST — ## Goal
+2026-08-02 23:14 IST — Ship InkType as canvas-first SaaS: paste → smart layout → handwritten-on-paper diagrams. Live: `https://inktype.tomorrowtools.dev`.
 
-## Status
-in progress
+2026-09-10 07:10 IST — ## Status
+2026-08-02 23:14 IST — in progress
 
-## Done
-- Hierarchy paste: `packages/core/src/tree.js`, `packages/diagram/src/tree.js` + dotted splines `paths.js`; Rough + Virgil craft.
-- Studio: `apps/web/app/studio/`, `StudioClient` / `CanvasBoard`; handcrafted `.excalidraw` export (`sceneToExcalidraw`).
-- Marketing/auth/billing surfaces: about/contact/support/login/settings/billing pages; `packages/auth`, Dodo billing (`packages/billing/src/dodo.js`).
-- Render: Rough HTML → Playwright JPEG (`packages/render`); paper styles in `shell.js`.
-- CSS desk-photo craft (no local SD): grain + vignette + soft-warp in `shell.js` + studio `CanvasBoard`/`globals.css`.
-- Excalidraw = export/interchange only; layout brain stays InkType.
-- Fooocus local blocked (GTX 1650 4GB); guards in `tools/fooocus-mvp/`. Install ~13GB at `~/Desktop/projects/Fooocus`.
-- automation handoff unrelated (Sreeraj); automation still has InkType client/CTA hooks when `INKTYPE_API_URL` set.
-- Branch: `main` (matches origin tracking; large **uncommitted** studio/billing/auth/tree/craft work). Ports: API `3041`, web `3040`.
+2026-09-10 07:10 IST — ## Done
+2026-08-02 23:14 IST — Hierarchy paste: `packages/core/src/tree.js`, `packages/diagram/src/tree.js` + dotted splines
+2026-08-02 23:14 IST — Studio: `apps/web/app/studio/`, `StudioClient` / `CanvasBoard`; Excalidraw export
+2026-08-02 23:14 IST — Marketing/auth/billing pages; Dodo billing (`packages/billing/src/dodo.js`)
+2026-08-02 23:14 IST — Render: Rough HTML → Playwright JPEG; CSS desk-photo craft (no local SD)
+2026-08-02 23:14 IST — Fooocus local blocked (GTX 1650 4GB); install ~13GB at `~/Desktop/projects/Fooocus`
+2026-08-02 23:14 IST — Branch `main`; large uncommitted studio/billing/auth/tree/craft; ports API `3041`, web `3040`
 
-## Next steps
-1. Visual QA studio + JPEG export — tune grain/vignette if too heavy.
-2. Commit when ready (exclude `.env`; include studio/tree/render/craft/billing/auth).
-3. Optional: delete local Fooocus (~13GB); remote GPU later for photo/doodle pass.
+2026-09-10 07:10 IST — ## Next steps
+2026-08-02 23:14 IST — 1. Visual QA studio + JPEG export — tune grain/vignette if too heavy
+2026-08-02 23:14 IST — 2. Commit when ready (exclude `.env`)
+2026-08-02 23:14 IST — 3. Optional: delete local Fooocus (~13GB)
 
-## Gotchas
-- Guest header: `x-inktype-guest-key`. Live: `inktype-api` / `inktype-web` tunnel.
-- Tree paste needs `├`/`└` (or deep indents). Tall exports can exceed 1350px height.
-- Do not `transform` export `body` — clips Playwright; warp = inset overlays only.
-- Do not run Fooocus locally unless MemAvailable ≥12GB.
+2026-09-10 07:10 IST — ## Gotchas
+2026-08-02 23:14 IST — Guest header: `x-inktype-guest-key`
+2026-08-02 23:14 IST — Tree paste needs `├`/`└` (or deep indents)
+2026-08-02 23:14 IST — Do not `transform` export `body` — clips Playwright
+2026-08-02 23:14 IST — Do not run Fooocus locally unless MemAvailable ≥12GB
 
-## Open decisions
-- Delete local Fooocus?
-- Push CSS notebook-photo further vs wait for remote GPU?
-- Owner admin vs free/Pro ledger (billing present, uncommitted).
+2026-09-10 07:10 IST — ## Open decisions
+2026-08-02 23:14 IST — Delete local Fooocus?
+2026-08-02 23:14 IST — Push CSS notebook-photo further vs wait for remote GPU?
+2026-08-02 23:14 IST — Owner admin vs free/Pro ledger (billing present, uncommitted)
